@@ -1,7 +1,8 @@
 'use client';
 
-import { categories } from '@/lib/mock-data';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 
 interface FiltersProps {
   selectedCategory: string;
@@ -10,44 +11,38 @@ interface FiltersProps {
   onSearchChange: (query: string) => void;
 }
 
-export function Filters({ 
-  selectedCategory, 
-  onCategoryChange, 
-  searchQuery, 
-  onSearchChange 
-}: FiltersProps) {
+const categories = ['Todas', 'Brasileira', 'Italiana', 'Japonesa', 'Árabe', 'Vegana', 'Sobremesa'];
+
+export function Filters({ selectedCategory, onCategoryChange, searchQuery, onSearchChange }: FiltersProps) {
   return (
     <div className="space-y-4">
       {/* Barra de Busca */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <Input
           type="text"
-          placeholder="Buscar pratos, cozinheiras..."
+          placeholder="Buscar por prato, cozinheira ou ingrediente..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:border-[#FF6B35] focus:outline-none transition-colors"
+          className="pl-10 h-12 text-base"
         />
       </div>
 
       {/* Categorias */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mr-2">
-          <SlidersHorizontal className="w-4 h-4" />
-          <span className="text-sm font-medium whitespace-nowrap">Filtrar:</span>
-        </div>
+      <div className="flex flex-wrap gap-2">
         {categories.map((category) => (
-          <button
+          <Button
             key={category}
+            variant={selectedCategory === category ? 'default' : 'outline'}
             onClick={() => onCategoryChange(category)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+            className={
               selectedCategory === category
-                ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] text-white shadow-lg'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+                ? 'bg-[#FF6B35] hover:bg-[#FF8C42] text-white'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+            }
           >
             {category}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

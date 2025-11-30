@@ -1,8 +1,9 @@
 'use client';
 
 import { Dish } from '@/lib/types';
-import { Star, Clock, MapPin, Home, Truck } from 'lucide-react';
-import Image from 'next/image';
+import { Star, MapPin, Clock, ChefHat } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface DishCardProps {
   dish: Dish;
@@ -11,47 +12,51 @@ interface DishCardProps {
 
 export function DishCard({ dish, onClick }: DishCardProps) {
   return (
-    <div 
+    <Card 
+      className="overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-105 group"
       onClick={onClick}
-      className="group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]"
     >
-      {/* Imagem do Prato */}
-      <div className="relative h-48 w-full overflow-hidden">
-        <Image
-          src={dish.photo}
+      {/* Imagem */}
+      <div className="relative h-48 overflow-hidden">
+        <img
+          src={dish.image}
           alt={dish.name}
-          fill
-          className="object-cover group-hover:scale-110 transition-transform duration-500"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
         />
-        <div className="absolute top-3 right-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm px-3 py-1 rounded-full">
-          <span className="text-lg font-bold text-[#FF6B35]">R$ {dish.price.toFixed(2)}</span>
-        </div>
-        <div className="absolute top-3 left-3 bg-[#FF6B35] text-white px-3 py-1 rounded-full text-sm font-medium">
+        {/* Badge de Categoria */}
+        <Badge className="absolute top-3 left-3 bg-[#FF6B35] text-white border-none">
           {dish.category}
-        </div>
+        </Badge>
+        {/* Badge de Disponibilidade */}
+        {dish.availableForDelivery && (
+          <Badge className="absolute top-3 right-3 bg-green-500 text-white border-none">
+            Delivery
+          </Badge>
+        )}
       </div>
 
       {/* Conteúdo */}
       <div className="p-4">
-        {/* Nome do Prato */}
-        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2 line-clamp-1">
-          {dish.name}
-        </h3>
+        {/* Nome e Preço */}
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 line-clamp-1">
+            {dish.name}
+          </h3>
+          <span className="text-lg font-bold text-[#FF6B35] whitespace-nowrap ml-2">
+            R$ {dish.price.toFixed(2)}
+          </span>
+        </div>
 
         {/* Descrição */}
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
           {dish.description}
         </p>
 
-        {/* Info da Cozinheira */}
-        <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-          <Image
-            src={dish.chef.avatar}
-            alt={dish.chef.name}
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
+        {/* Informações da Cozinheira */}
+        <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-semibold text-sm">
+            {dish.chef.name.charAt(0)}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
               {dish.chef.name}
@@ -59,7 +64,7 @@ export function DishCard({ dish, onClick }: DishCardProps) {
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
               <span className="text-xs text-gray-600 dark:text-gray-400">
-                {dish.chef.rating} ({dish.chef.totalReviews})
+                {dish.chef.rating.toFixed(1)} ({dish.chef.reviewCount})
               </span>
             </div>
           </div>
@@ -67,30 +72,22 @@ export function DishCard({ dish, onClick }: DishCardProps) {
 
         {/* Informações Adicionais */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Clock className="w-4 h-4 text-[#FF6B35]" />
-            <span>{dish.preparationTime} min • {dish.availableTime}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
             <MapPin className="w-4 h-4 text-[#FF6B35]" />
-            <span>{dish.chef.distance} km • {dish.chef.location}</span>
+            <span className="truncate">{dish.chef.location}</span>
           </div>
-          <div className="flex items-center gap-3 pt-2">
-            {dish.deliveryAvailable && (
-              <div className="flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
-                <Truck className="w-3 h-3" />
-                <span>Delivery</span>
-              </div>
-            )}
-            {dish.eatInAvailable && (
-              <div className="flex items-center gap-1 text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-1 rounded-full">
-                <Home className="w-3 h-3" />
-                <span>Eat-in</span>
-              </div>
-            )}
+          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+            <Clock className="w-4 h-4 text-[#FF6B35]" />
+            <span>Preparo: {dish.preparationTime}</span>
           </div>
+          {dish.servings && (
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <ChefHat className="w-4 h-4 text-[#FF6B35]" />
+              <span>Serve {dish.servings} {dish.servings === 1 ? 'pessoa' : 'pessoas'}</span>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
