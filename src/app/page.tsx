@@ -1,147 +1,222 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { mockDishes } from '@/lib/mock-data';
-import { Dish } from '@/lib/types';
-import { DishCard } from '@/components/custom/dish-card';
-import { DishModal } from '@/components/custom/dish-modal';
-import { Filters } from '@/components/custom/filters';
-import { ChefHat, MapPin, Sparkles, User, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { apiClient } from '@/lib/api-client';
+import { Product, PaginatedResponse } from '@/lib/types';
+import { ShoppingCart, Search, Filter, Plus, Minus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 export default function Home() {
-  const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('Todas');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [cart, setCart] = useState<{ [key: string]: number }>({});
 
-  // Filtrar pratos
-  const filteredDishes = useMemo(() => {
-    return mockDishes.filter((dish) => {
-      const matchesCategory = selectedCategory === 'Todas' || dish.category === selectedCategory;
-      const matchesSearch = 
-        dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        dish.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        dish.chef.name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      return matchesCategory && matchesSearch;
-    });
+  const categories = ['all', 'Brasileira', 'Italiana', 'Japonesa', 'Mexicana'];
+
+  useEffect(() => {
+    loadProducts();
   }, [selectedCategory, searchQuery]);
 
-  const handleDishClick = (dish: Dish) => {
-    setSelectedDish(dish);
-    setIsModalOpen(true);
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedCategory !== 'all') params.append('category', selectedCategory);
+      if (searchQuery) params.append('search', searchQuery);
+
+      const response = await apiClient.get<PaginatedResponse<Product>>(
+        `/products?${params.toString()}`
+      );
+      setProducts(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setTimeout(() => setSelectedDish(null), 300);
+  const addToCart = (productId: string) => {
+    setCart(prev => ({
+      ...prev,
+      [productId]: (prev[productId] || 0) + 1
+    }));
   };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[productId] > 1) {
+        newCart[productId]--;
+      } else {
+        delete newCart[productId];
+      }
+      return newCart;
+    });
+  };
+
+  const cartTotal = Object.entries(cart).reduce((total, [productId, quantity]) => {
+    const product = products.find(p => p.id === productId);
+    return total + (product?.price || 0) * quantity;
+  }, 0);
+
+  const cartItemsCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      {/* Hero Section */}
-      <header className="relative overflow-hidden bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] text-white">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-20"></div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <div className="flex items-center justify-between mb-8">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl">
-                <ChefHat className="w-8 h-8" />
-              </div>
-              <h1 className="text-4xl sm:text-5xl font-bold">HomeTaste</h1>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold">🍽️ Food Delivery</h1>
+              <p className="text-orange-100 mt-1">Comida caseira na sua porta</p>
             </div>
-
-            {/* User Menu */}
-            <div className="flex items-center gap-3">
-              <Link href="/auth">
-                <Button variant="outline" className="bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30">
-                  <User className="w-4 h-4 mr-2" />
-                  Entrar
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="text-center">
-            {/* Tagline */}
-            <p className="text-xl sm:text-2xl mb-4 text-white/90 font-medium">
-              Comida caseira feita com amor 🍲
-            </p>
-            <p className="text-lg text-white/80 max-w-2xl mx-auto mb-8">
-              Descubra pratos deliciosos feitos por cozinheiras da sua região. 
-              Delivery ou coma na casa da cozinheira!
-            </p>
-
-            {/* Stats */}
-            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8">
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                <ChefHat className="w-5 h-5" />
-                <span className="font-semibold">200+ Cozinheiras</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                <Sparkles className="w-5 h-5" />
-                <span className="font-semibold">500+ Pratos</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                <MapPin className="w-5 h-5" />
-                <span className="font-semibold">50+ Bairros</span>
-              </div>
+            <div className="relative">
+              <Button 
+                className="bg-white text-orange-600 hover:bg-orange-50 font-semibold"
+                size="lg"
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Carrinho
+                {cartItemsCount > 0 && (
+                  <span className="ml-2 bg-orange-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
+                    {cartItemsCount}
+                  </span>
+                )}
+              </Button>
+              {cartTotal > 0 && (
+                <div className="absolute -bottom-8 right-0 bg-white text-orange-600 px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
+                  R$ {cartTotal.toFixed(2)}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Wave Divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-12 sm:h-16">
-            <path d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="currentColor" className="text-orange-50 dark:text-gray-900"/>
-          </svg>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Filtros */}
-        <div className="mb-8">
-          <Filters
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Filters */}
+        <div className="mb-8 space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Buscar pratos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
+          </div>
 
-        {/* Título da Seção */}
-        <div className="mb-6">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            {selectedCategory === 'Todas' ? 'Pratos Disponíveis' : `Pratos ${selectedCategory}s`}
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            {filteredDishes.length} {filteredDishes.length === 1 ? 'prato encontrado' : 'pratos encontrados'} na sua região
-          </p>
-        </div>
-
-        {/* Grid de Pratos */}
-        {filteredDishes.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDishes.map((dish) => (
-              <DishCard
-                key={dish.id}
-                dish={dish}
-                onClick={() => handleDishClick(dish)}
-              />
+          {/* Categories */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            <Filter className="w-5 h-5 text-gray-500 flex-shrink-0" />
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all ${
+                  selectedCategory === category
+                    ? 'bg-orange-500 text-white shadow-lg'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {category === 'all' ? 'Todas' : category}
+              </button>
             ))}
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-lg overflow-hidden animate-pulse">
+                <div className="h-48 bg-gray-200"></div>
+                <div className="p-4 space-y-3">
+                  <div className="h-6 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-8 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : products.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((product) => {
+              const quantity = cart[product.id] || 0;
+              return (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                      {product.category}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-bold text-orange-600">
+                        R$ {product.price.toFixed(2)}
+                      </span>
+                      {quantity === 0 ? (
+                        <Button
+                          onClick={() => addToCart(product.id)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Adicionar
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => removeFromCart(product.id)}
+                            size="sm"
+                            variant="outline"
+                            className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <span className="font-bold text-lg w-8 text-center">{quantity}</span>
+                          <Button
+                            onClick={() => addToCart(product.id)}
+                            size="sm"
+                            className="bg-orange-500 hover:bg-orange-600 text-white"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {product.stock < 5 && (
+                      <p className="text-red-500 text-xs mt-2">
+                        ⚠️ Apenas {product.stock} unidades disponíveis
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Nenhum prato encontrado
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              Nenhum produto encontrado
             </h3>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600">
               Tente ajustar os filtros ou buscar por outro termo
             </p>
           </div>
@@ -149,55 +224,16 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <ChefHat className="w-6 h-6 text-[#FF6B35]" />
-                <span className="text-xl font-bold">HomeTaste</span>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Conectando você com as melhores cozinheiras da sua região.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Para Clientes</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/" className="hover:text-white">Como funciona</Link></li>
-                <li><Link href="/" className="hover:text-white">Pratos disponíveis</Link></li>
-                <li><Link href="/" className="hover:text-white">Avaliações</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Para Cozinheiras</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/auth" className="hover:text-white">Cadastre-se</Link></li>
-                <li><Link href="/chef/dashboard" className="hover:text-white">Dashboard</Link></li>
-                <li><Link href="/auth" className="hover:text-white">Ganhe dinheiro</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Para Entregadores</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/auth" className="hover:text-white">Cadastre-se</Link></li>
-                <li><Link href="/delivery/dashboard" className="hover:text-white">Dashboard</Link></li>
-                <li><Link href="/auth" className="hover:text-white">Seja parceiro</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>© 2024 HomeTaste. Todos os direitos reservados.</p>
-          </div>
+      <footer className="bg-gray-900 text-white mt-16 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-gray-400">
+            © 2024 Food Delivery - Arquitetura Full-Stack Profissional
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Frontend React + Backend API REST + Banco de Dados
+          </p>
         </div>
       </footer>
-
-      {/* Modal de Detalhes */}
-      <DishModal
-        dish={selectedDish}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      />
     </div>
   );
 }
